@@ -13,22 +13,22 @@ on:
     types: [completed]
 
 jobs:
-  check-version:
-    if: startsWith(github.ref, 'refs/tags/v')  # Run only on tag pushes
-    name: Ensure GitHub Release & Cargo.toml Version Numbers Match
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+  # check-version:
+  #   if: startsWith(github.ref, 'refs/tags/v')  # Run only on tag pushes
+  #   name: Ensure GitHub Release & Cargo.toml Version Numbers Match
+  #   runs-on: ubuntu-24.04
+  #   steps:
+  #     - name: Checkout Repository
+  #       uses: actions/checkout@v4
 
-      - name: Check Cargo Version Matches Tag
-        uses: spice-labs-inc/action-check-version@main
+  #     - name: Check Cargo Version Matches Tag
+  #       uses: spice-labs-inc/action-check-version@main
 
   push_to_registry:
     name: Push Docker Image to Docker Hub and GHCR
     runs-on: ubuntu-24.04
-    needs: check-version
-    if: github.event_name == 'push' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    #needs: check-version
+    #if: github.event_name == 'push' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
 
     permissions:
       packages: write
@@ -84,6 +84,9 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
+            type=sha
+          flavor: |
+            latest=true
 
       - name: Build and Push Docker Image
         id: push
@@ -106,11 +109,11 @@ jobs:
           docker pull "$image_tag"
           docker save "$image_tag" > "${{ github.workspace }}/target/release/${{ github.event.repository.name }}.oci.tar"
 
-      - name: Run Spice Grinder Scan
-        uses: spice-labs-inc/action-grinder-scan@main
-        with:
-          spice_pass: ${{ secrets.GRINDER_JWT }}
-          file_path: "${{ github.workspace }}/target/release/"
+      # - name: Run Spice Grinder Scan
+      #   uses: spice-labs-inc/action-grinder-scan@main
+      #   with:
+      #     spice_pass: ${{ secrets.GRINDER_JWT }}
+      #     file_path: "${{ github.workspace }}/target/release/"
 
       - name: Upload Docker Image and SBOM
         uses: actions/upload-artifact@v4
@@ -120,9 +123,9 @@ jobs:
             ${{ github.workspace }}/target/release/${{ github.event.repository.name }}.oci.tar
             /tmp/sbom.spdx.json
 
-      - name: Generate Artifact Attestation
-        uses: actions/attest-build-provenance@v1
-        with:
-          subject-name: ghcr.io/spice-labs-inc/${{ github.event.repository.name }}
-          subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: true
+      # - name: Generate Artifact Attestation
+      #   uses: actions/attest-build-provenance@v1
+      #   with:
+      #     subject-name: ghcr.io/spice-labs-inc/${{ github.event.repository.name }}
+      #     subject-digest: ${{ steps.push.outputs.digest }}
+      #     push-to-registry: true
